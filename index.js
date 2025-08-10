@@ -17,30 +17,29 @@ server.registerTool("get_crypto_price",
   },
   async ({ symbol }) => {
     try {
-      const response = await fetch(`https://www.coingecko.com/en/coins/${symbol.toLowerCase()}`);
-      const html = await response.text();
-
-      const scriptMatch = html.match(/<script type="application\/ld\+json">\s*({[^}]*"ExchangeRateSpecification"[^}]*})\s*<\/script>/);
-
-      if (scriptMatch) {
-        const data = JSON.parse(scriptMatch[1]);
-        const price = data.currentExchangeRate?.price;
-        const currency = data.currentExchangeRate?.priceCurrency || "USD";
-
-        if (price) {
-          return {
-            content: [{
-              type: "text",
-              text: `${data.name} (${data.currency}) is currently $${price.toFixed(2)} ${currency}`
-            }]
-          };
-        }
+      // Use CoinGecko's public API
+      const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol.toLowerCase()}&vs_currencies=usd`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data[symbol.toLowerCase()] && data[symbol.toLowerCase()].usd) {
+        const price = data[symbol.toLowerCase()].usd;
+        return {
+          content: [{
+            type: "text",
+            text: `${symbol} is currently $${price.toLocaleString()} USD`
+          }]
+        };
       }
 
       return {
         content: [{
           type: "text",
-          text: `Could not find price data for ${symbol}`
+          text: `Could not find price data for ${symbol}. Make sure to use the correct coin ID (e.g., bitcoin, ethereum)`
         }]
       };
     } catch (error) {
